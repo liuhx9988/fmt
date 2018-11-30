@@ -606,11 +606,14 @@ inline format_arg_store<wprintf_context, Args...>
 
 template <typename S, typename Char = FMT_CHAR(S)>
 inline std::basic_string<Char>
-vsprintf(const S &format,
+vsprintf(const S &format, std::size_t n,
          basic_format_args<typename basic_printf_context_t<
            internal::basic_buffer<Char>>::type> args) {
   basic_memory_buffer<Char> buffer;
-  printf(buffer, to_string_view(format), args);
+  typedef internal::truncating_iterator<char> It; //may be not char
+  auto it = vformat_to(It(buffer, n), format, args);
+  //printf(it.base(), format, args);
+  printf(buffer, to_string_view(it.base()), args);
   return to_string(buffer);
 }
 
@@ -625,12 +628,12 @@ vsprintf(const S &format,
 */
 template <typename S, typename... Args>
 inline FMT_ENABLE_IF_STRING(S, std::basic_string<FMT_CHAR(S)>)
-    sprintf(const S &format, const Args & ... args) {
+    sprintf(const S &format, std::size_t n, const Args & ... args) {
   internal::check_format_string<Args...>(format);
   typedef internal::basic_buffer<FMT_CHAR(S)> buffer;
   typedef typename basic_printf_context_t<buffer>::type context;
   format_arg_store<context, Args...> as{ args... };
-  return vsprintf(to_string_view(format),
+  return vsprintf(to_string_view(format), n,
                   basic_format_args<context>(as));
 }
 
